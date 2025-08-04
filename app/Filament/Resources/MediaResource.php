@@ -31,6 +31,7 @@ class MediaResource extends Resource
                     ->maxSize(200 * 1024) // 200MB
                     ->uploadingMessage(message: 'Uploading file...')
                     ->live()
+                    ->multiple()
                     ->columnSpanFull()
                     ->afterStateUpdated(function ($state, callable $set) {
                         if ($state) {
