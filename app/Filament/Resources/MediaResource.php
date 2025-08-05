@@ -23,52 +23,22 @@ class MediaResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\FileUpload::make('file')
-                    ->label('Upload File')
+                Forms\Components\FileUpload::make('files')
+                    ->label('Upload Images')
                     ->required()
                     ->disk('public')
                     ->directory('uploads')
-                    ->maxSize(200 * 1024) // 200MB
-                    ->uploadingMessage(message: 'Uploading file...')
-                    ->live()
+                    ->acceptedFileTypes(['image/*'])
+                    ->maxSize(50 * 1024) // 50MB per file
+                    ->uploadingMessage('Uploading images...')
                     ->multiple()
+                    ->reorderable()
+                    ->appendFiles()
+                    ->image()
+                    ->imageEditor()
+                    ->imagePreviewHeight('250')
                     ->columnSpanFull()
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        if ($state) {
-                            // File akan diproses di mutateFormDataBeforeCreate
-                        }
-                    }),
-                
-                Forms\Components\Select::make('type')
-                    ->label('Media Type')
-                    ->required()
-                    ->options([
-                        'image' => 'Image',
-                        'video' => 'Video',
-                        'audio' => 'Audio',
-                        'document' => 'Document',
-                        'other' => 'Other',
-                    ])
-                    ->columnSpanFull()
-                    ->default('other')
-                    ->selectablePlaceholder(false),
-                
-                Forms\Components\Textarea::make('description')
-                    ->label('Description (Opsional)')
-                    ->maxLength(500)
-                    ->columnSpanFull(),
-                
-                // Hidden fields that will be populated automatically
-                Forms\Components\Hidden::make('uuid'),
-                Forms\Components\Hidden::make('filename'),
-                Forms\Components\Hidden::make('original_name'),
-                Forms\Components\Hidden::make('mime_type'),
-                Forms\Components\Hidden::make('extension'),
-                Forms\Components\Hidden::make('size'),
-                Forms\Components\Hidden::make('disk'),
-                Forms\Components\Hidden::make('path'),
-                Forms\Components\Hidden::make('url'),
-                Forms\Components\Hidden::make('metadata'),
+                    ->helperText('You can upload multiple images at once'),
             ]);
     }
 
@@ -77,74 +47,22 @@ class MediaResource extends Resource
         return $form
             ->schema([
                 Forms\Components\FileUpload::make('path')
-                    ->label('File Sekarang')
+                    ->label('Current Image')
                     ->disk('public')
                     ->directory('uploads')
-                    ->visibility('private')
                     ->disabled()
                     ->columnSpanFull()
                     ->image(),
-                Forms\Components\FileUpload::make('file')
-                    ->label('Replace File (Optional)')
+                Forms\Components\FileUpload::make('new_file')
+                    ->label('Replace Image (Optional)')
                     ->disk('public')
                     ->directory('uploads')
-                    ->acceptedFileTypes([
-                        'image/*',
-                        'video/*',
-                        'audio/*',
-                        'application/pdf',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    ])
+                    ->acceptedFileTypes(['image/*'])
                     ->maxSize(50 * 1024) // 50MB
-                    ->uploadingMessage('Uploading file...')
+                    ->uploadingMessage('Uploading image...')
                     ->columnSpanFull()
-                    ->helperText('Leave empty to keep the current file'),
-                
-                Forms\Components\Select::make('type')
-                    ->label('Media Type')
-                    ->required()
-                    ->columnSpanFull()
-                    ->options([
-                        'image' => 'Image',
-                        'video' => 'Video',
-                        'audio' => 'Audio',
-                        'document' => 'Document',
-                        'other' => 'Other',
-                    ])
-                    ->selectablePlaceholder(false),
-                
-                Forms\Components\Textarea::make('description')
-                    ->label('Description')
-                    ->maxLength(500)
-                    ->columnSpanFull(),
-                
-                // Display current file information
-                Forms\Components\TextInput::make('original_name')
-                    ->label('Current File Name')
-                    ->disabled()
-                    ->dehydrated(false),
-                
-                Forms\Components\TextInput::make('size')
-                    ->label('File Size')
-                    ->disabled()
-                    ->dehydrated(false)
-                    ->formatStateUsing(fn ($state) => self::formatBytes($state)),
-                
-                Forms\Components\TextInput::make('mime_type')
-                    ->label('MIME Type')
-                    ->disabled()
-                    ->dehydrated(false),
-                
-                // Hidden fields that will be populated automatically if file is replaced
-                Forms\Components\Hidden::make('filename'),
-                Forms\Components\Hidden::make('extension'),
-                Forms\Components\Hidden::make('disk'),
-                Forms\Components\Hidden::make('path'),
-                Forms\Components\Hidden::make('url'),
-                Forms\Components\Hidden::make('metadata'),
+                    ->image()
+                    ->helperText('Leave empty to keep the current image'),
             ]);
     }
 
@@ -154,55 +72,21 @@ class MediaResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('path')
                     ->label('Preview')
-                    ->size(40)
-                    ->visibility('private'),
-                Tables\Columns\TextColumn::make('original_name')
-                    ->label('File Name')
+                    ->size(80)
+                    ->disk('public'),
+                Tables\Columns\TextColumn::make('path')
+                    ->label('Image Path')
                     ->searchable()
                     ->sortable()
-                    ->limit(30),
-                Tables\Columns\TextColumn::make('type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'image' => 'success',
-                        'video' => 'info',
-                        'audio' => 'warning',
-                        'document' => 'gray',
-                        default => 'secondary',
-                    }),
-                Tables\Columns\TextColumn::make('size')
-                    ->label('File Size')
-                    ->formatStateUsing(fn ($state) => self::formatBytes($state))
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('mime_type')
-                    ->label('MIME Type')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('extension')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('description')
-                    ->limit(50)
-                    ->toggleable(),
+                    ->copyable()
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Uploaded At')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'image' => 'Image',
-                        'video' => 'Video',
-                        'audio' => 'Audio',
-                        'document' => 'Document',
-                        'other' => 'Other',
-                    ]),
                 Tables\Filters\Filter::make('created_at')
                     ->form([
                         Forms\Components\DatePicker::make('created_from'),
@@ -221,9 +105,6 @@ class MediaResource extends Resource
                     }),
             ])
             ->actions([
-                // Tables\Actions\ViewAction::make()
-                //     ->url(fn ($record) => $record->full_url)
-                //     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

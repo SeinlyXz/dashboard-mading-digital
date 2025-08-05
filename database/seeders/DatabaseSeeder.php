@@ -20,5 +20,10 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@gmail.com',
             'password' => bcrypt('password'), // Use bcrypt for password hashing
         ]);
+
+        // Seed media data
+        $this->call([
+            MediaSeeder::class,
+        ]);
     }
 }

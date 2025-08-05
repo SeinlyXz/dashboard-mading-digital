@@ -12,19 +12,8 @@ return new class extends Migration {
     {
         Schema::create('medias', function (Blueprint $table) {
             $table->id(); // Primary Key
-            $table->uuid('uuid')->unique(); // Unik ID tambahan (optional tapi sangat berguna)
-            $table->string('filename');
-            $table->string('original_name');
-            $table->string('mime_type');
-            $table->string('extension', 10);
-            $table->unsignedBigInteger('size');
-            $table->string('disk')->default('public');
-            $table->string('path');
-            $table->string('url')->nullable(); // Bisa diisi jika menggunakan S3 atau CDN
-            $table->string('type'); // Bisa "image", "video", "audio", dll
-            $table->json('metadata')->nullable(); // Untuk simpan info tambahan seperti resolusi/durasi
+            $table->string('path'); // Path gambar - ini yang utama
             $table->timestamps();
-            $table->softDeletes(); // Jika ingin bisa dihapus sementara
         });
     }
 

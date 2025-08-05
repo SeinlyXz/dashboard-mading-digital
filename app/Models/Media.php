@@ -3,46 +3,73 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
-use App\Traits\ManagesMediaFiles;
 
 class Media extends Model
 {
-    use SoftDeletes, ManagesMediaFiles;
-
     protected $table = 'medias';
 
     protected $fillable = [
-        'uuid',
-        'filename',
-        'original_name',
-        'mime_type',
-        'extension',
-        'size',
-        'disk',
         'path',
-        'url',
-        'type',
-        'metadata',
-        'description',
     ];
 
     protected $casts = [
-        'metadata' => 'array',
+        // No casts needed for simple path string
     ];
-
-    protected static function booted()
-    {
-        static::creating(function ($media) {
-            $media->uuid = (string) Str::uuid();
-        });
-    }
 
     // Accessor untuk full URL
     public function getFullUrlAttribute(): string
     {
-        return $this->url ?? \Storage::disk($this->disk)->url($this->path);
+        return asset('storage/' . $this->path);
+    }
+
+    // Accessor untuk mendapatkan tipe file (image/video)
+    public function getTypeAttribute(): string
+    {
+        $extension = $this->getExtensionAttribute();
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+        $videoExtensions = ['mp4', 'webm', 'avi', 'mov', 'mkv'];
+
+        if (in_array($extension, $imageExtensions)) {
+            return 'image';
+        } elseif (in_array($extension, $videoExtensions)) {
+            return 'video';
+        }
+
+        return 'unknown';
+    }
+
+    // Accessor untuk mendapatkan ekstensi file
+    public function getExtensionAttribute(): string
+    {
+        return strtolower(pathinfo($this->path, PATHINFO_EXTENSION));
+    }
+
+    // Accessor untuk mendapatkan nama file
+    public function getFilenameAttribute(): string
+    {
+        return basename($this->path);
+    }
+
+    // Accessor untuk mendapatkan mime type
+    public function getMimeTypeAttribute(): string
+    {
+        $extension = $this->getExtensionAttribute();
+        
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'avi' => 'video/avi',
+            'mov' => 'video/quicktime',
+            'mkv' => 'video/x-matroska',
+        ];
+
+        return $mimeTypes[$extension] ?? 'application/octet-stream';
     }
 
     /**
@@ -51,8 +78,8 @@ class Media extends Model
     public function deleteFileFromStorage(): bool
     {
         try {
-            if ($this->path && \Storage::disk($this->disk)->exists($this->path)) {
-                return \Storage::disk($this->disk)->delete($this->path);
+            if ($this->path && \Storage::disk('public')->exists($this->path)) {
+                return \Storage::disk('public')->delete($this->path);
             }
             return true;
         } catch (\Exception $e) {
@@ -66,7 +93,7 @@ class Media extends Model
      */
     public function fileExists(): bool
     {
-        return $this->path && \Storage::disk($this->disk)->exists($this->path);
+        return $this->path && \Storage::disk('public')->exists($this->path);
     }
 
     /**
