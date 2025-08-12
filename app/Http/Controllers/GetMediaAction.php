@@ -12,7 +12,6 @@ class GetMediaAction extends Controller
     {
         try {
             // Ambil parameter dari request
-            $uuid = $request->get('uuid');
             $id = $request->get('id');
             $type = $request->get('type');
             $limit = $request->get('limit', 10);
@@ -20,25 +19,6 @@ class GetMediaAction extends Controller
 
             // Query builder untuk Media
             $query = Media::query();
-
-            // Filter berdasarkan UUID jika ada
-            if ($uuid) {
-                $media = $query->where('uuid', $uuid)->first();
-                
-                if (!$media) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Media tidak ditemukan',
-                        'data' => null
-                    ], 404);
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Media berhasil ditemukan',
-                    'data' => $this->formatMediaData($media)
-                ]);
-            }
 
             // Filter berdasarkan ID jika ada
             if ($id) {
@@ -59,9 +39,26 @@ class GetMediaAction extends Controller
                 ]);
             }
 
-            // Filter berdasarkan type jika ada
+            // Filter berdasarkan type jika ada (menggunakan accessor type dari model)
             if ($type) {
-                $query->where('type', $type);
+                if ($type === 'image') {
+                    $query->where(function($q) {
+                        $q->where('path', 'like', '%.jpg')
+                          ->orWhere('path', 'like', '%.jpeg')
+                          ->orWhere('path', 'like', '%.png')
+                          ->orWhere('path', 'like', '%.gif')
+                          ->orWhere('path', 'like', '%.webp')
+                          ->orWhere('path', 'like', '%.bmp');
+                    });
+                } elseif ($type === 'video') {
+                    $query->where(function($q) {
+                        $q->where('path', 'like', '%.mp4')
+                          ->orWhere('path', 'like', '%.webm')
+                          ->orWhere('path', 'like', '%.avi')
+                          ->orWhere('path', 'like', '%.mov')
+                          ->orWhere('path', 'like', '%.mkv');
+                    });
+                }
             }
 
             // Pagination
@@ -101,32 +98,15 @@ class GetMediaAction extends Controller
     {
         return [
             'id' => $media->id,
-            'uuid' => $media->uuid,
-            'filename' => $media->filename,
-            'original_name' => $media->original_name,
-            'mime_type' => $media->mime_type,
-            'extension' => $media->extension,
-            'size' => $media->size,
-            'size_formatted' => $this->formatFileSize($media->size),
-            'disk' => $media->disk,
             'path' => $media->path,
-            'url' => $media->url,
-            'full_url' => $media->full_url,
-            'type' => $media->type,
-            'description' => $media->description,
-            'metadata' => $media->metadata,
+            'filename' => $media->filename, // accessor dari model
+            'extension' => $media->extension, // accessor dari model
+            'mime_type' => $media->mime_type, // accessor dari model
+            'type' => $media->type, // accessor dari model (image/video/unknown)
+            'full_url' => $media->full_url, // accessor dari model
+            'file_exists' => $media->fileExists(), // method dari model
             'created_at' => $media->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $media->updated_at->format('Y-m-d H:i:s'),
         ];
-    }
-
-    /**
-     * Format ukuran file dalam bentuk yang mudah dibaca
-     */
-    private function formatFileSize(int $size): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $power = $size > 0 ? floor(log($size, 1024)) : 0;
-        return number_format($size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
     }
 }
